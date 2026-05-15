@@ -170,7 +170,7 @@ d3.json("links.json")
       link.attr("marker-end", (l) =>
         idOf(l.source) === nodeId || idOf(l.target) === nodeId
           ? ARROW_URL
-          : null
+          : null,
       );
     }
 
@@ -215,7 +215,7 @@ d3.json("links.json")
           .drag()
           .on("start", dragstarted)
           .on("drag", dragged)
-          .on("end", dragended)
+          .on("end", dragended),
       );
 
     const labels = container
@@ -248,7 +248,7 @@ d3.json("links.json")
         .slice()
         .sort(
           (a, b) =>
-            new URL(a.id).pathname.length - new URL(b.id).pathname.length
+            new URL(a.id).pathname.length - new URL(b.id).pathname.length,
         )[0].id;
     }
 
@@ -291,16 +291,16 @@ d3.json("links.json")
 
       link
         .classed("highlight", (l) =>
-          edgeSet.has(idOf(l.source) + "→" + idOf(l.target))
+          edgeSet.has(idOf(l.source) + "→" + idOf(l.target)),
         )
         .classed(
           "dimmed",
-          (l) => !edgeSet.has(idOf(l.source) + "→" + idOf(l.target))
+          (l) => !edgeSet.has(idOf(l.source) + "→" + idOf(l.target)),
         );
 
       if (typeof ARROW_URL !== "undefined") {
         link.attr("marker-end", (l) =>
-          edgeSet.has(idOf(l.source) + "→" + idOf(l.target)) ? ARROW_URL : null
+          edgeSet.has(idOf(l.source) + "→" + idOf(l.target)) ? ARROW_URL : null,
         );
       }
     }
@@ -361,7 +361,7 @@ d3.json("links.json")
         const pts = d3.polygonHull(
           visibleArr
             .filter((d) => Number.isFinite(d.x) && Number.isFinite(d.y))
-            .map((d) => [d.x, d.y])
+            .map((d) => [d.x, d.y]),
         );
 
         return { k, pts, arr: visibleArr };
@@ -369,7 +369,7 @@ d3.json("links.json")
 
       const path = hullLayer.selectAll("path").data(
         hullData.filter((h) => h.pts && h.pts.length > 2),
-        (d) => d.k
+        (d) => d.k,
       );
 
       path
@@ -394,7 +394,7 @@ d3.json("links.json")
           .forceLink(links)
           .id((d) => d.id)
           .distance(430)
-          .strength(0.8)
+          .strength(0.8),
       )
       .force("charge", d3.forceManyBody().strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2))
@@ -403,7 +403,7 @@ d3.json("links.json")
         d3
           .forceCollide()
           .radius((d) => Math.max(10, (degreeById.get(d.id) || 1) + 6))
-          .iterations(1)
+          .iterations(1),
       )
       .alphaDecay(0.03);
 
@@ -457,7 +457,7 @@ d3.json("links.json")
         }
 
         const keepSet = new Set(
-          nodes.filter((n) => matchesQuery(n, keywords)).map((n) => n.id)
+          nodes.filter((n) => matchesQuery(n, keywords)).map((n) => n.id),
         );
 
         nodes.forEach((n) => (n._filteredOut = !keepSet.has(n.id)));
@@ -532,7 +532,7 @@ d3.json("links.json")
       const connectedLinks = links.filter(
         (l) =>
           (l.source.id || l.source) === d.id ||
-          (l.target.id || l.target) === d.id
+          (l.target.id || l.target) === d.id,
       ).length;
 
       const keywordDensityFormatted =
@@ -543,7 +543,7 @@ d3.json("links.json")
               .slice(0, 5)
               .map(
                 ([keyword, density]) =>
-                  `${keyword}: ${(density * 100).toFixed(2)}%`
+                  `${keyword}: ${(density * 100).toFixed(2)}%`,
               )
               .join("<br/>")
           : "N/A";
@@ -588,8 +588,8 @@ d3.json("links.json")
         d.language_match === true
           ? "✓"
           : d.language_match === false
-          ? "✗"
-          : "—";
+            ? "✗"
+            : "—";
 
       const preloadCounts = countPreloadKinds(d.link_rel);
 
@@ -603,11 +603,11 @@ d3.json("links.json")
     <li><strong>Total Response Time:</strong> ${fmtSec(d.response_time)}</li>
     <li><strong>Depth:</strong> ${numOrNA(d.depth)}</li>
     <li><strong>In/Out Degree:</strong> ${d.in_degree || 0} / ${
-        d.out_degree || 0
-      } ${d.is_orphan ? "(orphan)" : ""}</li>
+      d.out_degree || 0
+    } ${d.is_orphan ? "(orphan)" : ""}</li>
 
     <li><strong>Meta Description:</strong> ${escapeHtml(
-      d.meta_description || "N/A"
+      d.meta_description || "N/A",
     )}</li>
     <li><strong>H1 Tags:</strong> ${
       d.h1_tags && d.h1_tags.length > 0
@@ -615,8 +615,8 @@ d3.json("links.json")
         : "None"
     }</li>
     <li><strong>Word Count:</strong> ${d.word_count} (≈${
-        d.read_time_minutes
-      } min read)</li>
+      d.read_time_minutes
+    } min read)</li>
     <li><strong>Unigram Density:</strong><br/>${keywordDensityFormatted}</li>
     <li><strong>Readability Score:</strong> ${
       typeof d.readability_score === "number"
@@ -631,8 +631,8 @@ d3.json("links.json")
       d.image_count
     } (lazy: ${lazyCount}, largest: ${largestImgText})</li>
     <li><strong>Scripts / Stylesheets:</strong> ${d.script_count} / ${
-        d.stylesheet_count
-      }</li>
+      d.stylesheet_count
+    }</li>
     <li><strong>Preload | Prefetch | Preconnect:</strong> ${
       preloadCounts.preload
     } | ${preloadCounts.prefetch} | ${preloadCounts.preconnect}</li>
@@ -672,31 +672,31 @@ d3.json("links.json")
     }</li>
 
     <li><strong>Security Headers:</strong> CSP ${hasCSP ? "✓" : "✗"} | HSTS ${
-        hasHSTS ? "✓" : "✗"
-      } | XFO ${yesNo(d.security?.x_frame_options)} | XCTO ${yesNo(
-        d.security?.x_content_type_options
-      )} | Referrer ${yesNo(d.security?.referrer_policy)}</li>
+      hasHSTS ? "✓" : "✗"
+    } | XFO ${yesNo(d.security?.x_frame_options)} | XCTO ${yesNo(
+      d.security?.x_content_type_options,
+    )} | Referrer ${yesNo(d.security?.referrer_policy)}</li>
     <li><strong>Mixed Content:</strong> ${mixedCount} ${
-        mixedCount > 0 ? "(http resources on https)" : ""
-      }</li>
+      mixedCount > 0 ? "(http resources on https)" : ""
+    }</li>
 
     <li><strong>Canonical:</strong> ${
       canonical ? `<a href="${canonical}" target="_blank">present</a>` : "None"
     }</li>
     <li><strong>JSON-LD:</strong> ${jsonldCount} | <strong>OG:</strong> ${
-        ogPresent ? "✓" : "✗"
-      } | <strong>Twitter:</strong> ${twPresent ? "✓" : "✗"}</li>
+      ogPresent ? "✓" : "✗"
+    } | <strong>Twitter:</strong> ${twPresent ? "✓" : "✗"}</li>
     <li><strong>Hreflang:</strong> ${hreflangCount}</li>
 
     <li><strong>Lang:</strong> html="${escapeHtml(
-      d.lang_attribute || ""
+      d.lang_attribute || "",
     )}" vs. detected="${d.detected_language || "unknown"}" (${langBadge})</li>
 
     <li><strong>Server:</strong> ${escapeHtml(
-      d.http_delivery?.server || "N/A"
+      d.http_delivery?.server || "N/A",
     )} | <strong>Cache-Control:</strong> ${escapeHtml(
-        d.http_delivery?.cache_control || "N/A"
-      )} | <strong>Set-Cookie names:</strong> ${cookieCount} | <strong>Redirect hops:</strong> ${redirectHops}</li>
+      d.http_delivery?.cache_control || "N/A",
+    )} | <strong>Set-Cookie names:</strong> ${cookieCount} | <strong>Redirect hops:</strong> ${redirectHops}</li>
 
     <li><strong>Number Of Internal Links:</strong> ${
       d.internal_links ? d.internal_links.length : 0
@@ -722,8 +722,8 @@ d3.json("links.json")
                 ((l.source.id || l.source) === d.id &&
                   (l.target.id || l.target) === n.id) ||
                 ((l.target.id || l.target) === d.id &&
-                  (l.source.id || l.source) === n.id)
-            )
+                  (l.source.id || l.source) === n.id),
+            ),
         )
         .classed("dimmed", false)
         .classed("highlight", true);
@@ -731,7 +731,7 @@ d3.json("links.json")
         .filter(
           (l) =>
             (l.source.id || l.source) === d.id ||
-            (l.target.id || l.target) === d.id
+            (l.target.id || l.target) === d.id,
         )
         .classed("dimmed", false)
         .classed("highlight", true);
@@ -758,7 +758,7 @@ d3.json("links.json")
         .filter(
           (l) =>
             (l.source.id || l.source) !== currentlySelectedNode?.id &&
-            (l.target.id || l.target) !== currentlySelectedNode?.id
+            (l.target.id || l.target) !== currentlySelectedNode?.id,
         )
         .classed("dimmed", false)
         .classed("highlight", false);
@@ -801,12 +801,12 @@ d3.json("links.json")
       node.classed("dimmed", (d) => !keep.has(d.id));
       link.classed(
         "dimmed",
-        (l) => !(keep.has(idOf(l.source)) && keep.has(idOf(l.target)))
+        (l) => !(keep.has(idOf(l.source)) && keep.has(idOf(l.target))),
       );
       node.classed("highlight", (d) => keep.has(d.id));
       link.classed(
         "highlight",
-        (l) => keep.has(idOf(l.source)) && keep.has(idOf(l.target))
+        (l) => keep.has(idOf(l.source)) && keep.has(idOf(l.target)),
       );
     }
 
@@ -834,7 +834,7 @@ d3.json("links.json")
     d3.select("body")
       .append("p")
       .text(
-        "Could not load or process crawl data. Check the console for errors."
+        "Could not load or process crawl data. Check the console for errors.",
       );
   });
 
@@ -1003,14 +1003,14 @@ function calculateScorecard(site_structure) {
       }
       if (page.a11y_extras?.aria_roles) {
         for (const [role, count] of Object.entries(
-          page.a11y_extras.aria_roles
+          page.a11y_extras.aria_roles,
         )) {
           ariaRolesAgg[role] = (ariaRolesAgg[role] || 0) + count;
         }
       }
       if (page.a11y_extras?.landmarks_count) {
         for (const [tag, count] of Object.entries(
-          page.a11y_extras.landmarks_count
+          page.a11y_extras.landmarks_count,
         )) {
           if (landmarksAgg[tag] != null) landmarksAgg[tag] += count || 0;
         }
@@ -1021,7 +1021,7 @@ function calculateScorecard(site_structure) {
 
       if (Array.isArray(page.link_rel)) {
         const { preload, prefetch, preconnect } = countPreloadKinds(
-          page.link_rel
+          page.link_rel,
         );
         acc.preloads.preload += preload;
         acc.preloads.prefetch += prefetch;
@@ -1082,7 +1082,7 @@ function calculateScorecard(site_structure) {
       orphans_count: 0,
       avg_depth: 0,
       max_depth: 0,
-    }
+    },
   );
 
   aggregated.cookies_unique_names = cookiesSet;
@@ -1113,42 +1113,42 @@ function displayScorecard(scorecard) {
     .append("li")
     .html(
       `<strong>Average Word Count:</strong> ${scorecard.average_word_count.toFixed(
-        2
-      )}`
+        2,
+      )}`,
     );
   list
     .append("li")
     .html(
       `<strong>Average Readability Score:</strong> ${scorecard.average_readability_score.toFixed(
-        2
-      )}`
+        2,
+      )}`,
     );
   list
     .append("li")
     .html(
       `<strong>Average Sentiment:</strong> ${scorecard.average_sentiment.toFixed(
-        2
-      )}`
+        2,
+      )}`,
     );
   list
     .append("li")
     .html(
       `<strong>Average TTFB:</strong> ${scorecard.average_ttfb.toFixed(
-        3
-      )} seconds`
+        3,
+      )} seconds`,
     );
   list
     .append("li")
     .html(
       `<strong>Average Response Time:</strong> ${scorecard.average_response_time.toFixed(
-        2
-      )} seconds`
+        2,
+      )} seconds`,
     );
 
   list
     .append("li")
     .html(
-      `<strong>Total Images:</strong> ${scorecard.image_count} (lazy: ${scorecard.lazy_images_total})`
+      `<strong>Total Images:</strong> ${scorecard.image_count} (lazy: ${scorecard.lazy_images_total})`,
     );
   list
     .append("li")
@@ -1159,7 +1159,7 @@ function displayScorecard(scorecard) {
   list
     .append("li")
     .html(
-      `<strong>Preload | Prefetch | Preconnect:</strong> ${scorecard.preloads.preload} | ${scorecard.preloads.prefetch} | ${scorecard.preloads.preconnect}`
+      `<strong>Preload | Prefetch | Preconnect:</strong> ${scorecard.preloads.preload} | ${scorecard.preloads.prefetch} | ${scorecard.preloads.preconnect}`,
     );
 
   list
@@ -1171,7 +1171,7 @@ function displayScorecard(scorecard) {
   list
     .append("li")
     .html(
-      `<strong>Pages with Viewport Meta:</strong> ${scorecard.viewport_meta_count}`
+      `<strong>Pages with Viewport Meta:</strong> ${scorecard.viewport_meta_count}`,
     );
 
   list
@@ -1187,14 +1187,14 @@ function displayScorecard(scorecard) {
     .append("li")
     .html(
       `<strong>Average Depth:</strong> ${scorecard.avg_depth.toFixed(
-        2
-      )} (max: ${scorecard.max_depth})`
+        2,
+      )} (max: ${scorecard.max_depth})`,
     );
 
   list
     .append("li")
     .html(
-      `<strong>Heading Issues Detected:</strong> ${scorecard.heading_issues}`
+      `<strong>Heading Issues Detected:</strong> ${scorecard.heading_issues}`,
     );
   list
     .append("li")
@@ -1202,12 +1202,12 @@ function displayScorecard(scorecard) {
   list
     .append("li")
     .html(
-      `<strong>Images Without Alt Text:</strong> ${scorecard.images_without_alt}`
+      `<strong>Images Without Alt Text:</strong> ${scorecard.images_without_alt}`,
     );
   list
     .append("li")
     .html(
-      `<strong>Generic Link Texts:</strong> ${scorecard.generic_link_texts_total}`
+      `<strong>Generic Link Texts:</strong> ${scorecard.generic_link_texts_total}`,
     );
 
   list
@@ -1219,35 +1219,35 @@ function displayScorecard(scorecard) {
   list
     .append("li")
     .html(
-      `<strong>Pages with Mixed Content:</strong> ${scorecard.pages_with_mixed_content} (resources: ${scorecard.mixed_content_resources_total})`
+      `<strong>Pages with Mixed Content:</strong> ${scorecard.pages_with_mixed_content} (resources: ${scorecard.mixed_content_resources_total})`,
     );
   list
     .append("li")
     .html(
-      `<strong>Redirect Hops (total):</strong> ${scorecard.redirect_hops_total}`
+      `<strong>Redirect Hops (total):</strong> ${scorecard.redirect_hops_total}`,
     );
   list
     .append("li")
     .html(
       `<strong>Unique Cookie Names Set:</strong> ${
         Array.from(scorecard.cookies_unique_names || []).length
-      }`
+      }`,
     );
 
   list
     .append("li")
     .html(
-      `<strong>Pages with Canonical:</strong> ${scorecard.pages_with_canonical}`
+      `<strong>Pages with Canonical:</strong> ${scorecard.pages_with_canonical}`,
     );
   list
     .append("li")
     .html(
-      `<strong>JSON-LD Blocks (total):</strong> ${scorecard.jsonld_total_blocks}`
+      `<strong>JSON-LD Blocks (total):</strong> ${scorecard.jsonld_total_blocks}`,
     );
   list
     .append("li")
     .html(
-      `<strong>Hreflang Pairs (total):</strong> ${scorecard.hreflang_pairs_total}`
+      `<strong>Hreflang Pairs (total):</strong> ${scorecard.hreflang_pairs_total}`,
     );
 
   const semanticUsed = Object.entries(scorecard.semantic_elements)
@@ -1279,7 +1279,7 @@ function displayScorecard(scorecard) {
       ([keyword, density]) =>
         `${escapeHtml(keyword)}: (Avg density ${(
           density / scorecard.totalPages
-        ).toFixed(4)})`
+        ).toFixed(4)})`,
     )
     .join("<br/>");
   list
@@ -1287,7 +1287,7 @@ function displayScorecard(scorecard) {
     .html(
       `<strong>Top Keyword Density (Average):</strong><br/>${
         keywordList || "N/A"
-      }`
+      }`,
     );
 
   const statusList = Object.entries(scorecard.status_codes)
@@ -1320,8 +1320,8 @@ d3.json("links.json")
       .append("li")
       .html(
         `<strong>Error loading scorecard data:</strong> ${escapeHtml(
-          error.message
-        )}`
+          error.message,
+        )}`,
       );
   });
 
