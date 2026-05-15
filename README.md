@@ -2,11 +2,17 @@
 
 ![Preview Of Resulting Visualization](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/9d320f08-dd19-4eb3-a89b-5bfd2873c2f0.png)
 
-Explore a website's internal links, then visualize and interact with those connections as a network graph with scorecards and analysis using Claude AI.
+Crawl a website’s internal pages to extract SEO, accessibility, performance and link-structure data, then visualize the results as a D3 network graph with page scorecards and analysis from Claude.
+
+## Overview
+
+The Python crawler in `app.py` begins with a chosen website, visits up to a user-defined number of internal pages and extracts details about accessibility, performance, security, links and more. It then saves the generated site map and audit data to `links.json` before launching a `Flask` server for interactive analysis.
+
+On the frontend, `main.js` loads `links.json` and renders the crawled website as a D3 network graph, with pages represented as nodes and internal links shown as connections. The `Flask` backend in `flask_server.py` provides an API for analyzing selected pages, while `anthropic_api.py` sends each page’s structured crawl data to `Claude` for a review of SEO, accessibility and suggested improvements.
 
 ## Set Up Instructions
 
-Below are the required software programs and instructions for installing and using this application.
+Below are the required software programs and instructions for using this application on a Linux machine.
 
 ### Programs Needed
 
@@ -20,56 +26,53 @@ Below are the required software programs and instructions for installing and usi
 
 2. Open a terminal
 
-3. Clone this repository using `git` by running the following command: `git clone git@github.com:devbret/website-internal-links.git`
+3. Clone this repository: `git clone git@github.com:devbret/website-internal-links.git`
 
-4. Navigate to the repo's directory by running: `cd website-internal-links`
+4. Navigate to the repo's directory: `cd website-internal-links`
 
-5. Create a virtual environment with this command: `python3 -m venv venv`
+5. Create a virtual environment: `python3 -m venv venv`
 
-6. Activate your virtual environment using: `source venv/bin/activate`
+6. Activate your virtual environment: `source venv/bin/activate`
 
-7. Install the needed dependencies for running the script: `pip install -r requirements.txt`
+7. Install the needed dependencies: `pip install -r requirements.txt`
 
-8. Set the environment variable for your Anthropic API key by renaming the `.env.template` file to `.env` and placing your value immediately after the `=` character
+8. Change the local `.env.template` file into a `.env` file: `cp .env.template .env`
 
-9. Edit the `app.py` file `WEBSITE_TO_CRAWL` variable (on line 21), this is the website you would like to visualize
-   - Also edit the `app.py` file `MAX_PAGES_TO_CRAWL` variable (on line 24) which specifies how many pages you would like to crawl
+9. Set the environment variable for your Anthropic API key in the new `.env` file
 
-10. Run the script with the command: `python3 app.py`
+10. Edit the `app.py` file `WEBSITE_TO_CRAWL` variable to include your chosen website
 
-11. To view the website's connections using the `index.html` file you will need to run the following command in a new terminal: `python3 -m http.server`
+11. Edit the `app.py` file `MAX_PAGES_TO_CRAWL` variable to the maximum number of pages to crawl
 
-12. Once the network map has been launched, hover over any given node for more information about the particular web page, as well as the option submit data for analysis via Claude AI
+12. Run the primary script: `python3 app.py`
 
-13. By double-clicking on a node you will be sent to the related URL address in a new tab
+13. Open a second terminal
 
-14. To exit the virtual environment (venv), type this command in the terminal: `deactivate`
+14. Navigate to the repo's directory again: `cd website-internal-links`
 
-## Additional Notes
+15. Launch a local `HTTP` server: `python3 -m http.server`
 
-We use `textstat` for readability and `TextBlob` for sentiment. Beyond headings, alt text, labels and semantic tags, the crawler also records:
+16. Open the local app in your browser: `http://localhost:8000`
 
-- **Status/Timing**: status code, TTFB, total response time
+17. When finished exploring, stop the local `HTTP` server: `CTRL + C`
 
-- **Structure**: word counts, H1s, paragraphs
+18. Also stop the `Flask` server: `CTRL + C`
 
-- **Links**: internal/external, depth, orphan pages
+19. Exit the virtual environment: `deactivate`
 
-- **SEO**: canonical, JSON-LD, OpenGraph, Twitter, hreflang
+## Other Considerations
 
-- **Security/Delivery**: CSP/HSTS headers, redirects, mixed content, cookies
+This project repo is intended to demonstrate an ability to do the following:
 
-- **Language**: `lang` vs detected
+- Crawl a website’s internal pages and turn the structure into a JSON dataset
 
-### Minor Features
+- Extract SEO, accessibility, performance, security and other measurements from each page crawled
 
-Upon clicking any node, the shortest route back to the homepage is highlghted, giving a clear visual of how deeply the page sits within the site structure. This feature uses a breadth-first search to trace paths efficiently, even in large crawls. The result is an intuitive way to explore navigation depth and connectivity directly within the visualization.
+- Visualize the website as a D3 network graph, making internal links easier to explore
 
-### Performance Considerations
+- Enable users to request analysis by `Claude` for improvement suggestions
 
-Generating visualizations with this app takes an unexpectedly large amount of processing power. It is advisable to experiment with mapping less than one hundred pages per launch.
-
-## Troubleshooting
+### Troubleshooting
 
 If working with GitHub codespaces, you may have to:
 
