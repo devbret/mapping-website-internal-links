@@ -26,9 +26,9 @@ Below are the required software programs and instructions for using this applica
 
 2. Open a terminal
 
-3. Clone this repository: `git clone git@github.com:devbret/website-internal-links.git`
+3. Clone this repository: `git clone git@github.com:devbret/mapping-website-internal-links.git`
 
-4. Navigate to the repo's directory: `cd website-internal-links`
+4. Navigate to the repo's directory: `cd mapping-website-internal-links`
 
 5. Create a virtual environment: `python3 -m venv venv`
 
@@ -48,7 +48,7 @@ Below are the required software programs and instructions for using this applica
 
 13. Open a second terminal
 
-14. Navigate to the repo's directory again: `cd website-internal-links`
+14. Navigate to the repo's directory again: `cd mapping-website-internal-links`
 
 15. Launch a local `HTTP` server: `python3 -m http.server`
 
@@ -77,8 +77,6 @@ This project repo is intended to demonstrate an ability to do the following:
 If working with GitHub codespaces, you may have to:
 
 - `python -m nltk.downloader punkt_tab`
-
-- Then reattempt steps 7 - 10
 
 If all else fails, please contact the maintainer here on GitHub or via [LinkedIn](https://www.linkedin.com/in/bernhoftbret/).
 
