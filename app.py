@@ -1,3 +1,5 @@
+import os
+import sys
 import requests
 import subprocess
 from urllib.parse import urljoin, urlparse
@@ -31,6 +33,8 @@ nltk.download('stopwords', quiet=True)
 WEBSITE_TO_CRAWL = 'https://www.example.com/'
 
 MAX_PAGES_TO_CRAWL = 50
+
+CRAWL_DELAY_SECONDS = float(os.getenv("CRAWL_DELAY_SECONDS", "1.0"))
 
 GENERIC_LINK_TEXT = {"click here", "learn more", "more", "here"}
 
@@ -281,6 +285,9 @@ def crawl_site(start_url, max_links=MAX_PAGES_TO_CRAWL):
         visited.add(normalized_url)
         print(f"Crawling: {normalized_url} (depth {depth}) ({len(visited)}/{max_links})")
 
+        if CRAWL_DELAY_SECONDS > 0 and len(visited) > 1:
+            time.sleep(CRAWL_DELAY_SECONDS)
+
         try:
             start_time = time.time()
             response = session.get(normalized_url, timeout=10)
@@ -331,7 +338,6 @@ def crawl_site(start_url, max_links=MAX_PAGES_TO_CRAWL):
             text = " ".join(text_content_for_analysis)
             
             text_content = text.strip()
-            search_text = re.sub(r'\s+', ' ', text_content).lower()
 
             word_count = len(text.split()) if text else 0
             readability_score = textstat.flesch_kincaid_grade(text) if text else 0
@@ -405,7 +411,6 @@ def crawl_site(start_url, max_links=MAX_PAGES_TO_CRAWL):
                 "meta_keywords": meta_keywords,
                 "h1_tags": h1_tags,
                 "text_content": text_content,
-                "search_text": search_text,
                 "word_count": word_count,
                 "readability_score": readability_score,
                 "sentiment": sentiment,
@@ -496,5 +501,5 @@ if __name__ == "__main__":
     crawled_site_structure = crawl_site(WEBSITE_TO_CRAWL, MAX_PAGES_TO_CRAWL)
     save_links_as_json(crawled_site_structure)
     print("Crawling complete. Starting Flask server subprocess...")
-    subprocess.run(["python", "flask_server.py"])
+    subprocess.run([sys.executable, "flask_server.py"])
     print("Flask server subprocess has been initiated.")

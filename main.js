@@ -1359,7 +1359,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .then((data) => {
           if (data.analysis) {
-            analysisOutput.textContent = data.analysis;
+            analysisOutput.innerHTML = renderMarkdown(data.analysis);
           } else {
             analysisOutput.textContent = `Error: ${
               data.error || "Unexpected response format."
@@ -1485,4 +1485,114 @@ function escapeHtml(s) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function renderInlineMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*(?!\s)(.+?)(?<!\s)\*(?!\*)/g, "$1<em>$2</em>")
+    .replace(/`([^`]+?)`/g, "<code>$1</code>");
+}
+
+function renderMarkdown(md) {
+  const lines = String(md).replace(/\r\n/g, "\n").split("\n");
+  const html = [];
+  let listType = null;
+  let paragraph = [];
+  let quote = [];
+  let inCodeBlock = false;
+  let codeBuffer = [];
+
+  const closeList = () => {
+    if (listType) {
+      html.push(`</${listType}>`);
+      listType = null;
+    }
+  };
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      html.push(`<p>${renderInlineMarkdown(paragraph.join(" "))}</p>`);
+      paragraph = [];
+    }
+  };
+  const flushQuote = () => {
+    if (quote.length) {
+      html.push(`<blockquote>${renderInlineMarkdown(quote.join(" "))}</blockquote>`);
+      quote = [];
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (line.startsWith("```")) {
+      if (inCodeBlock) {
+        html.push(`<pre><code>${escapeHtml(codeBuffer.join("\n"))}</code></pre>`);
+        codeBuffer = [];
+        inCodeBlock = false;
+      } else {
+        flushParagraph();
+        flushQuote();
+        closeList();
+        inCodeBlock = true;
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeBuffer.push(rawLine);
+      continue;
+    }
+
+    if (!line) {
+      flushParagraph();
+      flushQuote();
+      closeList();
+      continue;
+    }
+
+    const blockquote = line.match(/^>\s?(.*)$/);
+    if (blockquote) {
+      flushParagraph();
+      closeList();
+      quote.push(blockquote[1]);
+      continue;
+    }
+    flushQuote();
+
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flushParagraph();
+      closeList();
+      const level = heading[1].length;
+      html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    const ordered = line.match(/^\d+\.\s+(.*)$/);
+    const unordered = line.match(/^[-*+]\s+(.*)$/);
+    if (ordered || unordered) {
+      flushParagraph();
+      const wanted = ordered ? "ol" : "ul";
+      if (listType !== wanted) {
+        closeList();
+        html.push(`<${wanted}>`);
+        listType = wanted;
+      }
+      const item = (ordered || unordered)[1];
+      html.push(`<li>${renderInlineMarkdown(item)}</li>`);
+      continue;
+    }
+
+    closeList();
+    paragraph.push(line);
+  }
+
+  if (inCodeBlock && codeBuffer.length) {
+    html.push(`<pre><code>${escapeHtml(codeBuffer.join("\n"))}</code></pre>`);
+  }
+  flushParagraph();
+  flushQuote();
+  closeList();
+  return html.join("");
 }
