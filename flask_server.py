@@ -1,7 +1,8 @@
+import os
+import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from anthropic_api import analyze_with_anthropic
-import json
 
 site_structure = {}
 
@@ -46,11 +47,7 @@ def analyze():
 def list_urls():
     return jsonify(list(site_structure.keys()))
 
-def attach_data(structure):
-    global site_structure
-    print("attach_data called. Note: Server primarily loads data from links.json on startup.")
-    site_structure = structure
-
-if __name__ == "__main__": 
+if __name__ == "__main__":
     load_crawled_data()
-    app.run(debug=True)
+    debug = os.getenv("FLASK_DEBUG", "0").lower() in ("1", "true", "yes")
+    app.run(debug=debug)
