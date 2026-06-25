@@ -1494,6 +1494,71 @@ function renderInlineMarkdown(text) {
     .replace(/`([^`]+?)`/g, "<code>$1</code>");
 }
 
+function splitTableRow(line) {
+  const t = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+  const cells = [];
+  let cur = "";
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (ch === "\\" && t[i + 1] === "|") {
+      cur += "|";
+      i++;
+    } else if (ch === "|") {
+      cells.push(cur.trim());
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+function isTableSeparator(line) {
+  const t = line.trim();
+  if (!t.includes("|") || !t.includes("-")) return false;
+  const cells = splitTableRow(t);
+  return cells.length > 0 && cells.every((c) => /^:?-+:?$/.test(c));
+}
+
+function tableAlignments(sepLine) {
+  return splitTableRow(sepLine).map((c) => {
+    const left = c.startsWith(":");
+    const right = c.endsWith(":");
+    if (left && right) return "center";
+    if (right) return "right";
+    if (left) return "left";
+    return "";
+  });
+}
+
+function renderTable(headerLine, sepLine, bodyLines) {
+  const aligns = tableAlignments(sepLine);
+  const headerCells = splitTableRow(headerLine);
+  const alignAttr = (i) =>
+    aligns[i] ? ` style="text-align:${aligns[i]}"` : "";
+  const thead =
+    "<thead><tr>" +
+    headerCells
+      .map((c, i) => `<th${alignAttr(i)}>${renderInlineMarkdown(c)}</th>`)
+      .join("") +
+    "</tr></thead>";
+  const tbody =
+    "<tbody>" +
+    bodyLines
+      .map((row) => {
+        const cells = splitTableRow(row);
+        let tds = "";
+        for (let i = 0; i < headerCells.length; i++) {
+          tds += `<td${alignAttr(i)}>${renderInlineMarkdown(cells[i] || "")}</td>`;
+        }
+        return `<tr>${tds}</tr>`;
+      })
+      .join("") +
+    "</tbody>";
+  return `<div class="md-table-wrap"><table class="md-table">${thead}${tbody}</table></div>`;
+}
+
 function renderMarkdown(md) {
   const lines = String(md).replace(/\r\n/g, "\n").split("\n");
   const html = [];
@@ -1522,7 +1587,8 @@ function renderMarkdown(md) {
     }
   };
 
-  for (const rawLine of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
     const line = rawLine.trim();
 
     if (line.startsWith("```")) {
@@ -1566,6 +1632,26 @@ function renderMarkdown(md) {
       closeList();
       const level = heading[1].length;
       html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    if (
+      line.includes("|") &&
+      i + 1 < lines.length &&
+      isTableSeparator(lines[i + 1])
+    ) {
+      flushParagraph();
+      closeList();
+      const body = [];
+      let j = i + 2;
+      while (j < lines.length) {
+        const next = lines[j].trim();
+        if (!next || !next.includes("|") || isTableSeparator(lines[j])) break;
+        body.push(lines[j]);
+        j++;
+      }
+      html.push(renderTable(line, lines[i + 1], body));
+      i = j - 1;
       continue;
     }
 
