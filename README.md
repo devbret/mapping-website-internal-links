@@ -40,9 +40,9 @@ Below are the required software programs and instructions for using this applica
 
 9. Set the environment variable for your Anthropic API key in the new `.env` file
 
-10. Edit the `app.py` file `WEBSITE_TO_CRAWL` variable to include your chosen website
+10. In the new `.env` file, set the `WEBSITE_TO_CRAWL` variable to your chosen website
 
-11. Edit the `app.py` file `MAX_PAGES_TO_CRAWL` variable to the maximum number of pages to crawl
+11. In the new `.env` file, set the `MAX_PAGES_TO_CRAWL` variable to the maximum number of pages to crawl
 
 12. Run the primary script: `python3 app.py`
 

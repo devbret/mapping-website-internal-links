@@ -182,6 +182,34 @@ svg {
   color: #555;
 }
 
+#claude-analysis-output .md-table-wrap {
+  margin: 0 0 8px;
+  overflow-x: auto;
+}
+
+#claude-analysis-output .md-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+
+#claude-analysis-output .md-table th,
+#claude-analysis-output .md-table td {
+  border: 1px solid #ccc;
+  padding: 3px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+#claude-analysis-output .md-table th {
+  background-color: #f0f0f0;
+  font-weight: bold;
+}
+
+#claude-analysis-output .md-table tr:nth-child(even) td {
+  background-color: #fafafa;
+}
+
 .legend-box {
   position: absolute;
   bottom: 20px;

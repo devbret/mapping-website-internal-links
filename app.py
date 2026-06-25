@@ -10,7 +10,7 @@ import textstat
 from textblob import TextBlob
 import nltk
 from nltk.corpus import stopwords
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, deque
 import re
 import hashlib
 from dotenv import load_dotenv
@@ -27,12 +27,12 @@ except Exception:
 
 load_dotenv()
 
-nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
 nltk.download('stopwords', quiet=True)
 
-WEBSITE_TO_CRAWL = 'https://www.example.com/'
+WEBSITE_TO_CRAWL = os.getenv("WEBSITE_TO_CRAWL", "https://www.example.com/")
 
-MAX_PAGES_TO_CRAWL = 50
+MAX_PAGES_TO_CRAWL = int(os.getenv("MAX_PAGES_TO_CRAWL", "50"))
 
 CRAWL_DELAY_SECONDS = float(os.getenv("CRAWL_DELAY_SECONDS", "1.0"))
 
@@ -265,18 +265,18 @@ def build_session():
 def crawl_site(start_url, max_links=MAX_PAGES_TO_CRAWL):
     session = build_session()
 
+    start = start_url.rstrip('/')
     visited = set()
     site_structure = {}
-    to_visit = [(start_url.rstrip('/'), 0)]
+    to_visit = deque([(start, 0)])
+    queued = {start}
     in_edges = defaultdict(set)
     out_edges = defaultdict(set)
 
     site_meta = fetch_robots_and_sitemaps(start_url, session)
 
     while to_visit and len(visited) < max_links:
-        url, depth = to_visit.pop(0)
-        if url in visited:
-            continue
+        url, depth = to_visit.popleft()
 
         normalized_url = url.rstrip('/')
         if normalized_url in visited:
@@ -322,7 +322,7 @@ def crawl_site(start_url, max_links=MAX_PAGES_TO_CRAWL):
                 continue
 
             soup = BeautifulSoup(response.text, 'html.parser')
-            page_title = soup.title.string.strip() if soup.title else ''
+            page_title = soup.title.get_text(strip=True) if soup.title else ''
 
             meta_desc_tag = soup.find('meta', attrs={'name': 'description'})
             meta_description = meta_desc_tag['content'].strip() if meta_desc_tag and 'content' in meta_desc_tag.attrs else ''
@@ -396,8 +396,9 @@ def crawl_site(start_url, max_links=MAX_PAGES_TO_CRAWL):
                 if is_internal(absolute_href, start_url):
                     internal_links_found.append(absolute_href)
                     out_edges[normalized_url].add(absolute_href)
-                    if absolute_href not in visited and all(absolute_href != u for (u, _) in to_visit) and len(visited) + len(to_visit) < max_links:
+                    if absolute_href not in queued and len(queued) < max_links:
                         to_visit.append((absolute_href, depth + 1))
+                        queued.add(absolute_href)
                 else:
                     external_links_found.append(absolute_href)
 
