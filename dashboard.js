@@ -118,7 +118,7 @@ window.addEventListener("dashboard-show", () => {
 function init(site) {
   if (!site || Object.keys(site).length === 0) {
     document.querySelector(".dash-grid").textContent =
-      "links.json is empty — run the crawler first.";
+      "links.json is empty - run the crawler first.";
     return;
   }
 
@@ -395,7 +395,7 @@ function init(site) {
   function renderKPIs(keep) {
     const sel = pages.filter((p) => keep.has(p.url));
     tiles.forEach(({ k, value, sub }) => {
-      value.textContent = sel.length ? k.value(sel) : "—";
+      value.textContent = sel.length ? k.value(sel) : "-";
       sub.textContent = sel.length && k.sub ? k.sub(sel) : "";
     });
 
@@ -434,7 +434,7 @@ function init(site) {
     present.forEach((b) => {
       const row = document.createElement("div");
       row.className = "stat-sub";
-      row.textContent = `${b.icon} ${b.label} — ${counts.get(b.key)}`;
+      row.textContent = `${b.icon} ${b.label} - ${counts.get(b.key)}`;
       donutLegend.appendChild(row);
     });
     if (!present.length) {
@@ -750,7 +750,7 @@ function init(site) {
       .attr("fill", (d) => sectionColor.get(d.data.section))
       .on("pointermove", (event, d) =>
         showTip(event, d.data.path || "/", [
-          ["Title", truncate(d.data.title, 60) || "—"],
+          ["Title", truncate(d.data.title, 60) || "-"],
           ...pageTipRows(d.data),
         ]),
       )
