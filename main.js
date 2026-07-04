@@ -23,7 +23,9 @@ d3.json("links.json")
   .then(function (site_structure) {
     if (!site_structure || Object.keys(site_structure).length === 0) {
       console.warn("links.json is empty or invalid. Cannot render graph.");
-      d3.select("body").append("p").text("No crawl data available to display.");
+      d3.select("#graph-view")
+        .append("p")
+        .text("No crawl data available to display.");
       return;
     }
 
@@ -124,7 +126,7 @@ d3.json("links.json")
     const height = window.innerHeight;
 
     const svg = d3
-      .select("body")
+      .select("#graph-view")
       .append("svg")
       .attr("width", width)
       .attr("height", height);
@@ -202,11 +204,6 @@ d3.json("links.json")
       .attr("stroke-width", (d) => (hasIssues(d) ? 2.5 : 1.5))
       .on("mouseover", mouseover)
       .on("mouseout", mouseout)
-      .on("click", (event, d) => {
-        highlightNeighborhood(d.id);
-        currentlySelectedNode = d;
-        renderInspector(d);
-      })
       .on("dblclick", (event, d) => {
         window.open(d.id, "_blank");
       })
@@ -375,7 +372,7 @@ d3.json("links.json")
       path
         .enter()
         .append("path")
-        .attr("fill", (d) => colorByIssue(d))
+        .attr("fill", (d) => colorByIssue(d3.max(d.arr, issueScore) ?? 0))
         .attr("fill-opacity", 0.06)
         .attr("stroke", (d) => groupColor(d.k))
         .attr("stroke-opacity", (d) => (sectionHasIssues(d.arr) ? 0.9 : 0.4))
@@ -427,6 +424,7 @@ d3.json("links.json")
 
     const searchInput = document.getElementById("node-search");
     const clearBtn = document.getElementById("node-search-clear");
+    const searchStatus = document.getElementById("search-status");
 
     if (searchInput) {
       nodes.forEach((n) => (n._filteredOut = false));
@@ -453,12 +451,19 @@ d3.json("links.json")
 
           drawHulls();
           clearHighlight?.();
+          if (searchStatus) searchStatus.textContent = "";
           return;
         }
 
         const keepSet = new Set(
           nodes.filter((n) => matchesQuery(n, keywords)).map((n) => n.id),
         );
+
+        if (searchStatus) {
+          searchStatus.textContent = `${keepSet.size} node${
+            keepSet.size === 1 ? "" : "s"
+          } match`;
+        }
 
         nodes.forEach((n) => (n._filteredOut = !keepSet.has(n.id)));
 
@@ -479,7 +484,7 @@ d3.json("links.json")
         if (currentlySelectedNode && !keepSet.has(currentlySelectedNode.id)) {
           currentlySelectedNode = null;
           clearHighlight?.();
-          d3.select("#tooltip-scorecard-list").html("");
+          showNodeEmptyState();
         }
       }
 
@@ -498,7 +503,11 @@ d3.json("links.json")
       });
 
       window.addEventListener("keydown", (e) => {
-        if (e.key === "/" && document.activeElement !== searchInput) {
+        if (
+          e.key === "/" &&
+          document.activeElement !== searchInput &&
+          !document.body.classList.contains("dashboard-open")
+        ) {
           e.preventDefault();
           searchInput.focus();
         }
@@ -535,178 +544,7 @@ d3.json("links.json")
           (l.target.id || l.target) === d.id,
       ).length;
 
-      const keywordDensityFormatted =
-        d.keyword_density && Object.keys(d.keyword_density).length > 0
-          ? Object.entries(d.keyword_density)
-              .filter(([_, density]) => density > 0)
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 5)
-              .map(
-                ([keyword, density]) =>
-                  `${keyword}: ${(density * 100).toFixed(2)}%`,
-              )
-              .join("<br/>")
-          : "N/A";
-
-      const hasCSP = !!(d.security && d.security.content_security_policy);
-      const hasHSTS = !!(d.security && d.security.strict_transport_security);
-      const canonical = d.structured?.canonical || "";
-      const jsonldCount = Array.isArray(d.structured?.jsonld)
-        ? d.structured.jsonld.length
-        : 0;
-      const hreflangCount = Array.isArray(d.structured?.hreflang)
-        ? d.structured.hreflang.length
-        : 0;
-      const ogPresent =
-        d.structured && d.structured.opengraph
-          ? Object.keys(d.structured.opengraph).length > 0
-          : false;
-      const twPresent =
-        d.structured && d.structured.twitter
-          ? Object.keys(d.structured.twitter).length > 0
-          : false;
-
-      const cookieCount = Array.isArray(d.http_delivery?.set_cookies)
-        ? d.http_delivery.set_cookies.length
-        : 0;
-
-      const redirectHops = Array.isArray(d.http_delivery?.redirect_chain)
-        ? d.http_delivery.redirect_chain.length - 1
-        : 0;
-
-      const lazyCount = d.media_hints?.lazy_images_count || 0;
-      const largestImg = d.media_hints?.largest_image || {};
-      const largestImgText = largestImg.src
-        ? `${largestImg.width}×${largestImg.height}`
-        : "N/A";
-
-      const mixedCount = Array.isArray(d.mixed_content)
-        ? d.mixed_content.length
-        : 0;
-
-      const langBadge =
-        d.language_match === true
-          ? "✓"
-          : d.language_match === false
-            ? "✗"
-            : "—";
-
-      const preloadCounts = countPreloadKinds(d.link_rel);
-
-      const tooltipContent = `
-    <li><strong>Title:</strong> ${escapeHtml(d.title || "N/A")}</li>
-    <li><strong>URL:</strong> <a href="${d.id}" target="_blank">${d.id}</a></li>
-    <li><strong>Connections:</strong> ${connectedLinks}</li>
-
-    <li><strong>Status Code:</strong> ${d.status_code || "N/A"}</li>
-    <li><strong>TTFB:</strong> ${fmtSec(d.ttfb)}</li>
-    <li><strong>Total Response Time:</strong> ${fmtSec(d.response_time)}</li>
-    <li><strong>Depth:</strong> ${numOrNA(d.depth)}</li>
-    <li><strong>In/Out Degree:</strong> ${d.in_degree || 0} / ${
-      d.out_degree || 0
-    } ${d.is_orphan ? "(orphan)" : ""}</li>
-
-    <li><strong>Meta Description:</strong> ${escapeHtml(
-      d.meta_description || "N/A",
-    )}</li>
-    <li><strong>H1 Tags:</strong> ${
-      d.h1_tags && d.h1_tags.length > 0
-        ? d.h1_tags.map(escapeHtml).join(", ")
-        : "None"
-    }</li>
-    <li><strong>Word Count:</strong> ${d.word_count} (≈${
-      d.read_time_minutes
-    } min read)</li>
-    <li><strong>Unigram Density:</strong><br/>${keywordDensityFormatted}</li>
-    <li><strong>Readability Score:</strong> ${
-      typeof d.readability_score === "number"
-        ? d.readability_score.toFixed(2)
-        : "N/A"
-    }</li>
-    <li><strong>Sentiment:</strong> ${
-      typeof d.sentiment === "number" ? d.sentiment.toFixed(2) : "N/A"
-    }</li>
-
-    <li><strong>Images:</strong> ${
-      d.image_count
-    } (lazy: ${lazyCount}, largest: ${largestImgText})</li>
-    <li><strong>Scripts / Stylesheets:</strong> ${d.script_count} / ${
-      d.stylesheet_count
-    }</li>
-    <li><strong>Preload | Prefetch | Preconnect:</strong> ${
-      preloadCounts.preload
-    } | ${preloadCounts.prefetch} | ${preloadCounts.preconnect}</li>
-    <li><strong>Has Viewport Meta:</strong> ${
-      d.has_viewport_meta ? "Yes" : "No"
-    }</li>
-
-    <li><strong>Semantic Elements:</strong><br/>${
-      d.semantic_elements && Object.keys(d.semantic_elements).length > 0
-        ? Object.entries(d.semantic_elements)
-            .map(([tag, present]) => `${tag}: ${present ? "✔️" : "❌"}`)
-            .join("<br/>")
-        : "N/A"
-    }</li>
-    <li><strong>Landmarks Count:</strong><br/>${
-      d.a11y_extras?.landmarks_count
-        ? Object.entries(d.a11y_extras.landmarks_count)
-            .map(([k, v]) => `${k}: ${v}`)
-            .join("<br/>")
-        : "N/A"
-    }</li>
-    <li><strong>Unlabeled Inputs:</strong> ${
-      d.unlabeled_inputs?.length ? d.unlabeled_inputs.join(", ") : "None"
-    }</li>
-    <li><strong>Images Without Alt:</strong> ${
-      d.images_without_alt?.length || 0
-    }</li>
-    <li><strong>Generic Link Texts:</strong> ${
-      d.a11y_extras?.generic_link_texts?.length
-        ? d.a11y_extras.generic_link_texts.length
-        : 0
-    }</li>
-    <li><strong>Heading Structure Issues:</strong> ${
-      d.heading_issues && d.heading_issues.length > 0
-        ? d.heading_issues.map((pair) => `${pair[0]} → ${pair[1]}`).join(", ")
-        : "None"
-    }</li>
-
-    <li><strong>Security Headers:</strong> CSP ${hasCSP ? "✓" : "✗"} | HSTS ${
-      hasHSTS ? "✓" : "✗"
-    } | XFO ${yesNo(d.security?.x_frame_options)} | XCTO ${yesNo(
-      d.security?.x_content_type_options,
-    )} | Referrer ${yesNo(d.security?.referrer_policy)}</li>
-    <li><strong>Mixed Content:</strong> ${mixedCount} ${
-      mixedCount > 0 ? "(http resources on https)" : ""
-    }</li>
-
-    <li><strong>Canonical:</strong> ${
-      canonical ? `<a href="${canonical}" target="_blank">present</a>` : "None"
-    }</li>
-    <li><strong>JSON-LD:</strong> ${jsonldCount} | <strong>OG:</strong> ${
-      ogPresent ? "✓" : "✗"
-    } | <strong>Twitter:</strong> ${twPresent ? "✓" : "✗"}</li>
-    <li><strong>Hreflang:</strong> ${hreflangCount}</li>
-
-    <li><strong>Lang:</strong> html="${escapeHtml(
-      d.lang_attribute || "",
-    )}" vs. detected="${d.detected_language || "unknown"}" (${langBadge})</li>
-
-    <li><strong>Server:</strong> ${escapeHtml(
-      d.http_delivery?.server || "N/A",
-    )} | <strong>Cache-Control:</strong> ${escapeHtml(
-      d.http_delivery?.cache_control || "N/A",
-    )} | <strong>Set-Cookie names:</strong> ${cookieCount} | <strong>Redirect hops:</strong> ${redirectHops}</li>
-
-    <li><strong>Number Of Internal Links:</strong> ${
-      d.internal_links ? d.internal_links.length : 0
-    } links</li>
-    <li><strong>Number Of External Links:</strong> ${
-      d.external_links ? d.external_links.length : 0
-    } links</li>
-  `;
-
-      d3.select("#tooltip-scorecard-list").html(tooltipContent);
+      renderNodeScorecard(d, connectedLinks);
 
       d3.select(this).style("cursor", "pointer");
       labels.filter((l) => l === d).attr("display", null);
@@ -826,12 +664,71 @@ d3.json("links.json")
       if ("12345".includes(e.key)) {
         node.attr("r", (d) => sizeModes[sizeMode](d));
         simulation.alpha(0.2).restart();
+        updateActiveLegend();
       }
     });
+
+    const legendModes = [
+      { key: "1", mode: "degree", label: "Degree" },
+      { key: "2", mode: "words", label: "Words" },
+      { key: "3", mode: "speed", label: "Response" },
+      { key: "4", mode: "ttfb", label: "TTFB" },
+      { key: "5", mode: "hub", label: "Hubs" },
+    ];
+
+    const legend = d3
+      .select("#graph-view")
+      .append("div")
+      .attr("id", "hotkey-legend")
+      .attr("class", "legend-box");
+
+    legend.append("h4").text("Graph Controls");
+
+    const modeGroup = legend
+      .append("div")
+      .attr("class", "mode-group")
+      .attr("role", "group")
+      .attr("aria-label", "Size nodes by");
+
+    legendModes.forEach((m) => {
+      const btn = modeGroup
+        .append("button")
+        .attr("type", "button")
+        .attr("class", "mode-btn")
+        .attr("data-mode", m.mode)
+        .attr(
+          "title",
+          `Press ${m.key} to size nodes by ${m.label.toLowerCase()}`,
+        )
+        .on("click", function () {
+          sizeMode = this.getAttribute("data-mode");
+          node.attr("r", (d) => sizeModes[sizeMode](d));
+          simulation.alpha(0.2).restart();
+          updateActiveLegend();
+        });
+      btn.append("span").attr("class", "key-hint").text(m.key);
+      btn.append("span").attr("class", "mode-label").text(m.label);
+    });
+
+    const shortcuts = legend.append("div").attr("class", "legend-shortcuts");
+    shortcuts
+      .append("span")
+      .html(`<span class="key-hint">Click</span> Route home`);
+    shortcuts
+      .append("span")
+      .html(`<span class="key-hint">Esc</span> Clear highlight`);
+
+    function updateActiveLegend() {
+      modeGroup.selectAll(".mode-btn").classed("active", function () {
+        return this.getAttribute("data-mode") === sizeMode;
+      });
+    }
+
+    updateActiveLegend();
   })
   .catch(function (error) {
     console.error("Error loading or processing links.json:", error);
-    d3.select("body")
+    d3.select("#graph-view")
       .append("p")
       .text(
         "Could not load or process crawl data. Check the console for errors.",
@@ -1103,200 +1000,577 @@ function calculateScorecard(site_structure) {
   };
 }
 
-function displayScorecard(scorecard) {
-  const list = d3.select("#scorecard-list").html("");
+function scSection(root, title) {
+  const s = root.append("div").attr("class", "sc-section");
+  s.append("div").attr("class", "sc-section-title").text(title);
+  return s;
+}
 
-  list
-    .append("li")
-    .html(`<strong>Total Pages:</strong> ${scorecard.totalPages}`);
-  list
-    .append("li")
-    .html(
-      `<strong>Average Word Count:</strong> ${scorecard.average_word_count.toFixed(
-        2,
-      )}`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Average Readability Score:</strong> ${scorecard.average_readability_score.toFixed(
-        2,
-      )}`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Average Sentiment:</strong> ${scorecard.average_sentiment.toFixed(
-        2,
-      )}`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Average TTFB:</strong> ${scorecard.average_ttfb.toFixed(
-        3,
-      )} seconds`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Average Response Time:</strong> ${scorecard.average_response_time.toFixed(
-        2,
-      )} seconds`,
-    );
+function scTile(grid, label, value) {
+  const tile = grid.append("div").attr("class", "sc-tile");
+  tile.append("div").attr("class", "sc-tile-value").text(value);
+  tile.append("div").attr("class", "sc-tile-label").text(label);
+}
 
-  list
-    .append("li")
-    .html(
-      `<strong>Total Images:</strong> ${scorecard.image_count} (lazy: ${scorecard.lazy_images_total})`,
-    );
-  list
-    .append("li")
-    .html(`<strong>Total Scripts:</strong> ${scorecard.script_count}`);
-  list
-    .append("li")
-    .html(`<strong>Total Stylesheets:</strong> ${scorecard.stylesheet_count}`);
-  list
-    .append("li")
-    .html(
-      `<strong>Preload | Prefetch | Preconnect:</strong> ${scorecard.preloads.preload} | ${scorecard.preloads.prefetch} | ${scorecard.preloads.preconnect}`,
-    );
+function scChip(parent, text, cls) {
+  parent
+    .append("span")
+    .attr("class", `sc-chip${cls ? " " + cls : ""}`)
+    .text(text);
+}
 
-  list
-    .append("li")
-    .html(`<strong>Total Headings:</strong> ${scorecard.heading_count}`);
-  list
-    .append("li")
-    .html(`<strong>Total Paragraphs:</strong> ${scorecard.paragraph_count}`);
-  list
-    .append("li")
-    .html(
-      `<strong>Pages with Viewport Meta:</strong> ${scorecard.viewport_meta_count}`,
-    );
+function scBoolChip(parent, label, ok) {
+  scChip(
+    parent,
+    `${ok ? "\u2713" : "\u2715"} ${label}`,
+    ok ? "sc-chip-good" : "sc-chip-bad",
+  );
+}
 
-  list
-    .append("li")
-    .html(`<strong>Total Internal Links:</strong> ${scorecard.internal_links}`);
-  list
-    .append("li")
-    .html(`<strong>Total External Links:</strong> ${scorecard.external_links}`);
-  list
-    .append("li")
-    .html(`<strong>Orphan Pages:</strong> ${scorecard.orphans_count}`);
-  list
-    .append("li")
-    .html(
-      `<strong>Average Depth:</strong> ${scorecard.avg_depth.toFixed(
-        2,
-      )} (max: ${scorecard.max_depth})`,
-    );
+function scCountChip(parent, label, count) {
+  scChip(
+    parent,
+    `${count > 0 ? "\u2715" : "\u2713"} ${label} \u00b7 ${count}`,
+    count > 0 ? "sc-chip-bad" : "sc-chip-good",
+  );
+}
 
-  list
-    .append("li")
-    .html(
-      `<strong>Heading Issues Detected:</strong> ${scorecard.heading_issues}`,
-    );
-  list
-    .append("li")
-    .html(`<strong>Unlabeled Inputs:</strong> ${scorecard.unlabeled_inputs}`);
-  list
-    .append("li")
-    .html(
-      `<strong>Images Without Alt Text:</strong> ${scorecard.images_without_alt}`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Generic Link Texts:</strong> ${scorecard.generic_link_texts_total}`,
-    );
+function scKv(parent, key, value) {
+  const row = parent.append("div").attr("class", "sc-kv");
+  row.append("span").attr("class", "sc-kv-key").text(key);
+  row.append("span").attr("class", "sc-kv-value").text(value);
+}
 
-  list
-    .append("li")
-    .html(`<strong>Pages with CSP:</strong> ${scorecard.pages_with_csp}`);
-  list
-    .append("li")
-    .html(`<strong>Pages with HSTS:</strong> ${scorecard.pages_with_hsts}`);
-  list
-    .append("li")
-    .html(
-      `<strong>Pages with Mixed Content:</strong> ${scorecard.pages_with_mixed_content} (resources: ${scorecard.mixed_content_resources_total})`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Redirect Hops (total):</strong> ${scorecard.redirect_hops_total}`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Unique Cookie Names Set:</strong> ${
-        Array.from(scorecard.cookies_unique_names || []).length
-      }`,
-    );
-
-  list
-    .append("li")
-    .html(
-      `<strong>Pages with Canonical:</strong> ${scorecard.pages_with_canonical}`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>JSON-LD Blocks (total):</strong> ${scorecard.jsonld_total_blocks}`,
-    );
-  list
-    .append("li")
-    .html(
-      `<strong>Hreflang Pairs (total):</strong> ${scorecard.hreflang_pairs_total}`,
-    );
-
-  const semanticUsed = Object.entries(scorecard.semantic_elements)
-    .map(([tag, count]) => `${tag}: ${count}`)
-    .join("<br/>");
-  list
-    .append("li")
-    .html(`<strong>Semantic Element Usage:</strong><br/>${semanticUsed}`);
-
-  const landmarksList = Object.entries(scorecard.landmarks_total || {})
-    .map(([tag, count]) => `${tag}: ${count}`)
-    .join("<br/>");
-  list
-    .append("li")
-    .html(`<strong>Landmarks (total):</strong><br/>${landmarksList || "N/A"}`);
-
-  const ariaList = Object.entries(scorecard.aria_roles || {})
-    .sort((a, b) => b[1] - a[1])
-    .map(([role, count]) => `${role}: ${count}`)
-    .join("<br/>");
-  list
-    .append("li")
-    .html(`<strong>ARIA Roles (sum):</strong><br/>${ariaList || "N/A"}`);
-
-  const keywordList = Object.entries(scorecard.keyword_density)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 10)
-    .map(
-      ([keyword, density]) =>
-        `${escapeHtml(keyword)}: (Avg density ${(
-          density / scorecard.totalPages
-        ).toFixed(4)})`,
+function scBar(parent, label, value, max, valueText) {
+  const row = parent.append("div").attr("class", "sc-meter");
+  row.append("span").attr("class", "sc-meter-label").text(label);
+  row
+    .append("span")
+    .attr("class", "sc-meter-track")
+    .append("span")
+    .attr("class", "sc-meter-fill")
+    .style(
+      "width",
+      max > 0 && value > 0
+        ? `${Math.max(3, Math.round((value / max) * 100))}%`
+        : "0",
     )
-    .join("<br/>");
-  list
-    .append("li")
-    .html(
-      `<strong>Top Keyword Density (Average):</strong><br/>${
-        keywordList || "N/A"
-      }`,
-    );
+    .style("background-color", "#0077cc");
+  row
+    .append("span")
+    .attr("class", "sc-meter-value")
+    .text(valueText ?? String(value));
+}
 
-  const statusList = Object.entries(scorecard.status_codes)
-    .sort((a, b) => +a[0] - +b[0])
-    .map(([code, count]) => `${code}: ${count}`)
-    .join("<br/>");
-  list
-    .append("li")
-    .html(`<strong>Status Codes:</strong><br/>${statusList || "N/A"}`);
+function scSplitBar(parent, aLabel, aValue, bLabel, bValue) {
+  const totalValue = aValue + bValue;
+  if (totalValue === 0) return;
+  const aPct = (aValue / totalValue) * 100;
+  const split = parent.append("div").attr("class", "sc-split");
+  split
+    .append("span")
+    .style("width", `${aPct}%`)
+    .style("background-color", "#0077cc");
+  split
+    .append("span")
+    .style("width", `${100 - aPct}%`)
+    .style("background-color", "#eda100");
+  const legend = parent.append("div").attr("class", "sc-split-legend");
+  [
+    [aLabel, aValue, "#0077cc"],
+    [bLabel, bValue, "#eda100"],
+  ].forEach(([label, value, color]) => {
+    const item = legend.append("span");
+    item.append("i").attr("class", "sc-dot").style("background-color", color);
+    item.append("span").text(`${label} ${value.toLocaleString()}`);
+  });
+}
+
+function showNodeEmptyState() {
+  const root = d3.select("#tooltip-scorecard-list").html("");
+  root
+    .append("div")
+    .attr("class", "sc-empty")
+    .text("Hover over a node in the graph to inspect that page.");
+}
+
+function renderNodeScorecard(d, connections) {
+  const root = d3.select("#tooltip-scorecard-list").html("");
+
+  const head = root.append("div").attr("class", "sc-node-head");
+  let pathLabel = d.id;
+  try {
+    pathLabel = new URL(d.id).pathname || "/";
+  } catch (e) {}
+  head
+    .append("div")
+    .attr("class", "sc-node-title")
+    .text(d.title || pathLabel);
+  head
+    .append("a")
+    .attr("class", "sc-node-url")
+    .attr("href", d.id)
+    .attr("target", "_blank")
+    .attr("rel", "noopener")
+    .text(d.id);
+
+  const badges = head.append("div").attr("class", "sc-chips");
+  const bucket = statusBucket(d.status_code);
+  const bucketCls = {
+    "2xx": "sc-chip-good",
+    "3xx": "sc-chip-warn",
+    "4xx": "sc-chip-bad",
+    "5xx": "sc-chip-bad",
+    other: "",
+  }[bucket];
+  scChip(badges, `HTTP ${d.status_code || "?"}`, bucketCls);
+  scChip(badges, `depth ${numOrNA(d.depth)}`, "");
+  if (d.is_orphan) scChip(badges, "orphan", "sc-chip-bad");
+  if (d.language_match === true) {
+    scChip(
+      badges,
+      `lang ${d.lang_attribute || d.detected_language} \u2713`,
+      "sc-chip-good",
+    );
+  } else if (d.language_match === false) {
+    scChip(
+      badges,
+      `lang ${d.lang_attribute || "?"} vs ${d.detected_language}`,
+      "sc-chip-bad",
+    );
+  }
+
+  const grid = root.append("div").attr("class", "sc-kpi-grid");
+  scTile(
+    grid,
+    "TTFB",
+    typeof d.ttfb === "number" ? `${d.ttfb.toFixed(3)}s` : "N/A",
+  );
+  scTile(
+    grid,
+    "Response",
+    typeof d.response_time === "number"
+      ? `${d.response_time.toFixed(2)}s`
+      : "N/A",
+  );
+  scTile(grid, "Words", (d.word_count || 0).toLocaleString());
+  scTile(grid, "Read time", `${d.read_time_minutes || 0}m`);
+  scTile(
+    grid,
+    "Readability",
+    typeof d.readability_score === "number"
+      ? d.readability_score.toFixed(1)
+      : "N/A",
+  );
+  scTile(
+    grid,
+    "Sentiment",
+    typeof d.sentiment === "number" ? d.sentiment.toFixed(2) : "N/A",
+  );
+
+  const linksSec = scSection(root, "Links");
+  scSplitBar(
+    linksSec,
+    "Internal",
+    d.internal_links ? d.internal_links.length : 0,
+    "External",
+    d.external_links ? d.external_links.length : 0,
+  );
+  scKv(linksSec, "Connections in graph", String(connections));
+  scKv(
+    linksSec,
+    "In / out degree",
+    `${d.in_degree || 0} / ${d.out_degree || 0}`,
+  );
+
+  const kwEntries = Object.entries(d.keyword_density || {})
+    .filter(([, density]) => density > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  if (kwEntries.length > 0) {
+    const kwSec = scSection(root, "Top keywords");
+    const maxDensity = kwEntries[0][1];
+    kwEntries.forEach(([word, density]) => {
+      scBar(kwSec, word, density, maxDensity, `${(density * 100).toFixed(2)}%`);
+    });
+  }
+
+  const seo = scSection(root, "SEO and sharing");
+  const seoChips = seo.append("div").attr("class", "sc-chips");
+  scBoolChip(seoChips, "Meta description", !!d.meta_description);
+  scBoolChip(seoChips, "Canonical", !!d.structured?.canonical);
+  scBoolChip(
+    seoChips,
+    "Open Graph",
+    !!(d.structured?.opengraph && Object.keys(d.structured.opengraph).length),
+  );
+  scBoolChip(
+    seoChips,
+    "Twitter card",
+    !!(d.structured?.twitter && Object.keys(d.structured.twitter).length),
+  );
+  const jsonldCount = Array.isArray(d.structured?.jsonld)
+    ? d.structured.jsonld.length
+    : 0;
+  scChip(
+    seo.select(".sc-chips"),
+    `JSON-LD \u00b7 ${jsonldCount}`,
+    jsonldCount ? "sc-chip-good" : "",
+  );
+  const hreflangCount = Array.isArray(d.structured?.hreflang)
+    ? d.structured.hreflang.length
+    : 0;
+  scChip(seoChips, `hreflang \u00b7 ${hreflangCount}`, "");
+  if (d.meta_description) {
+    seo
+      .append("div")
+      .attr("class", "sc-note")
+      .text(
+        d.meta_description.length > 180
+          ? d.meta_description.slice(0, 179) + "\u2026"
+          : d.meta_description,
+      );
+  }
+  if (Array.isArray(d.h1_tags) && d.h1_tags.length > 0) {
+    seo
+      .append("div")
+      .attr("class", "sc-note")
+      .text(`H1: ${d.h1_tags.join(" \u00b7 ")}`);
+  }
+
+  const health = scSection(root, "Health and accessibility");
+  const healthChips = health.append("div").attr("class", "sc-chips");
+  scBoolChip(healthChips, "Viewport", !!d.has_viewport_meta);
+  scBoolChip(healthChips, "CSP", !!d.security?.content_security_policy);
+  scBoolChip(healthChips, "HSTS", !!d.security?.strict_transport_security);
+  scBoolChip(healthChips, "X-Frame", !!d.security?.x_frame_options);
+  scBoolChip(
+    healthChips,
+    "X-Content-Type",
+    !!d.security?.x_content_type_options,
+  );
+  scBoolChip(healthChips, "Referrer policy", !!d.security?.referrer_policy);
+  scCountChip(healthChips, "Mixed content", d.mixed_content?.length || 0);
+  scCountChip(healthChips, "Heading issues", d.heading_issues?.length || 0);
+  scCountChip(healthChips, "Unlabeled inputs", d.unlabeled_inputs?.length || 0);
+  scCountChip(healthChips, "Images w/o alt", d.images_without_alt?.length || 0);
+  scCountChip(
+    healthChips,
+    "Generic link text",
+    d.a11y_extras?.generic_link_texts?.length || 0,
+  );
+
+  const struct = scSection(root, "Structure");
+  const semChips = struct.append("div").attr("class", "sc-chips");
+  Object.entries(d.semantic_elements || {}).forEach(([tag, present]) => {
+    scChip(semChips, `<${tag}>`, present ? "" : "sc-chip-zero");
+  });
+  const landmarks = d.a11y_extras?.landmarks_count;
+  if (landmarks) {
+    scKv(
+      struct,
+      "Landmarks",
+      Object.entries(landmarks)
+        .filter(([, count]) => count > 0)
+        .map(([tag, count]) => `${tag} ${count}`)
+        .join(", ") || "none",
+    );
+  }
+  scKv(struct, "Heading count", String(d.heading_count || 0));
+  scKv(struct, "Paragraphs", String(d.paragraph_count || 0));
+
+  const del = scSection(root, "Assets and delivery");
+  const lazyCount = d.media_hints?.lazy_images_count || 0;
+  scKv(del, "Images", `${d.image_count || 0} (${lazyCount} lazy)`);
+  const largest = d.media_hints?.largest_image;
+  if (largest && largest.src) {
+    scKv(del, "Largest image", `${largest.width}\u00d7${largest.height}`);
+  }
+  scKv(
+    del,
+    "Scripts / stylesheets",
+    `${d.script_count || 0} / ${d.stylesheet_count || 0}`,
+  );
+  const preloadCounts = countPreloadKinds(d.link_rel);
+  scKv(
+    del,
+    "Preload / prefetch / preconnect",
+    `${preloadCounts.preload} / ${preloadCounts.prefetch} / ${preloadCounts.preconnect}`,
+  );
+  scKv(del, "Server", d.http_delivery?.server || "N/A");
+  const cache = d.http_delivery?.cache_control || "N/A";
+  scKv(
+    del,
+    "Cache-Control",
+    cache.length > 34 ? cache.slice(0, 33) + "\u2026" : cache,
+  );
+  scKv(
+    del,
+    "Cookies set",
+    String(
+      Array.isArray(d.http_delivery?.set_cookies)
+        ? d.http_delivery.set_cookies.length
+        : 0,
+    ),
+  );
+  scKv(
+    del,
+    "Redirect hops",
+    String(
+      Array.isArray(d.http_delivery?.redirect_chain)
+        ? Math.max(0, d.http_delivery.redirect_chain.length - 1)
+        : 0,
+    ),
+  );
+}
+
+function renderClaudeMarkdown(md) {
+  if (window.marked && window.DOMPurify) {
+    return DOMPurify.sanitize(marked.parse(String(md)));
+  }
+  return renderMarkdown(md);
+}
+
+function displayScorecard(scorecard) {
+  const root = d3.select("#scorecard-list").html("");
+  const total = scorecard.totalPages || 1;
+
+  function section(title) {
+    const s = root.append("div").attr("class", "sc-section");
+    s.append("div").attr("class", "sc-section-title").text(title);
+    return s;
+  }
+
+  function meterRow(parent, label, count, denom) {
+    const frac = denom > 0 ? count / denom : 0;
+    const row = parent.append("div").attr("class", "sc-meter");
+    row.append("span").attr("class", "sc-meter-label").text(label);
+    row
+      .append("span")
+      .attr("class", "sc-meter-track")
+      .append("span")
+      .attr("class", "sc-meter-fill")
+      .style(
+        "width",
+        frac === 0 ? "0" : `${Math.max(3, Math.round(frac * 100))}%`,
+      )
+      .style(
+        "background-color",
+        frac >= 0.9 ? "#0ca30c" : frac >= 0.5 ? "#eda100" : "#d03b3b",
+      );
+    row
+      .append("span")
+      .attr("class", "sc-meter-value")
+      .text(`${count}/${denom}`);
+  }
+
+  function barRow(parent, label, value, max, valueText) {
+    const row = parent.append("div").attr("class", "sc-meter");
+    row.append("span").attr("class", "sc-meter-label").text(label);
+    row
+      .append("span")
+      .attr("class", "sc-meter-track")
+      .append("span")
+      .attr("class", "sc-meter-fill")
+      .style(
+        "width",
+        max > 0 && value > 0
+          ? `${Math.max(3, Math.round((value / max) * 100))}%`
+          : "0",
+      )
+      .style("background-color", "#0077cc");
+    row
+      .append("span")
+      .attr("class", "sc-meter-value")
+      .text(valueText ?? String(value));
+  }
+
+  function chip(parent, text, cls) {
+    parent
+      .append("span")
+      .attr("class", `sc-chip${cls ? " " + cls : ""}`)
+      .text(text);
+  }
+
+  function kvRow(parent, key, value) {
+    const row = parent.append("div").attr("class", "sc-kv");
+    row.append("span").attr("class", "sc-kv-key").text(key);
+    row.append("span").attr("class", "sc-kv-value").text(value);
+  }
+
+  const kpiGrid = root.append("div").attr("class", "sc-kpi-grid");
+  [
+    ["Pages", String(scorecard.totalPages)],
+    ["Avg words", Math.round(scorecard.average_word_count).toLocaleString()],
+    ["Readability", scorecard.average_readability_score.toFixed(1)],
+    ["Avg TTFB", `${scorecard.average_ttfb.toFixed(3)}s`],
+    ["Avg response", `${scorecard.average_response_time.toFixed(2)}s`],
+    ["Sentiment", scorecard.average_sentiment.toFixed(2)],
+  ].forEach(([label, value]) => {
+    const tile = kpiGrid.append("div").attr("class", "sc-tile");
+    tile.append("div").attr("class", "sc-tile-value").text(value);
+    tile.append("div").attr("class", "sc-tile-label").text(label);
+  });
+
+  const health = section("Site health");
+  meterRow(health, "Viewport meta", scorecard.viewport_meta_count, total);
+  meterRow(health, "HSTS", scorecard.pages_with_hsts, total);
+  meterRow(health, "Canonical", scorecard.pages_with_canonical, total);
+  meterRow(health, "CSP", scorecard.pages_with_csp, total);
+  meterRow(
+    health,
+    "No mixed content",
+    total - scorecard.pages_with_mixed_content,
+    total,
+  );
+
+  const issues = section("Issues found");
+  const issueChips = issues.append("div").attr("class", "sc-chips");
+  [
+    ["Heading issues", scorecard.heading_issues],
+    ["Images w/o alt", scorecard.images_without_alt],
+    ["Unlabeled inputs", scorecard.unlabeled_inputs],
+    ["Generic link text", scorecard.generic_link_texts_total],
+    ["Redirect hops", scorecard.redirect_hops_total],
+  ].forEach(([label, count]) => {
+    chip(
+      issueChips,
+      `${count > 0 ? "✕" : "✓"} ${label} · ${count}`,
+      count > 0 ? "sc-chip-bad" : "sc-chip-good",
+    );
+  });
+
+  const linksSec = section("Links");
+  const totalLinks = scorecard.internal_links + scorecard.external_links;
+  if (totalLinks > 0) {
+    const intPct = (scorecard.internal_links / totalLinks) * 100;
+    const split = linksSec.append("div").attr("class", "sc-split");
+    split
+      .append("span")
+      .style("width", `${intPct}%`)
+      .style("background-color", "#0077cc");
+    split
+      .append("span")
+      .style("width", `${100 - intPct}%`)
+      .style("background-color", "#eda100");
+    const legend = linksSec.append("div").attr("class", "sc-split-legend");
+    const intItem = legend.append("span");
+    intItem
+      .append("i")
+      .attr("class", "sc-dot")
+      .style("background-color", "#0077cc");
+    intItem
+      .append("span")
+      .text(`Internal ${scorecard.internal_links.toLocaleString()}`);
+    const extItem = legend.append("span");
+    extItem
+      .append("i")
+      .attr("class", "sc-dot")
+      .style("background-color", "#eda100");
+    extItem
+      .append("span")
+      .text(`External ${scorecard.external_links.toLocaleString()}`);
+  }
+  kvRow(linksSec, "Orphan pages", String(scorecard.orphans_count));
+  kvRow(
+    linksSec,
+    "Crawl depth",
+    `avg ${scorecard.avg_depth.toFixed(1)} · max ${scorecard.max_depth}`,
+  );
+
+  const assets = section("Page assets");
+  const preloadTotal =
+    scorecard.preloads.preload +
+    scorecard.preloads.prefetch +
+    scorecard.preloads.preconnect;
+  const assetRows = [
+    ["Paragraphs", scorecard.paragraph_count],
+    ["Scripts", scorecard.script_count],
+    ["Headings", scorecard.heading_count],
+    ["Images", scorecard.image_count],
+    ["Preload hints", preloadTotal],
+    ["Stylesheets", scorecard.stylesheet_count],
+  ].sort((a, b) => b[1] - a[1]);
+  const maxAsset = assetRows[0][1];
+  assetRows.forEach(([label, value]) => {
+    barRow(assets, label, value, maxAsset, value.toLocaleString());
+  });
+
+  const kw = section("Top keywords");
+  const kwEntries = Object.entries(scorecard.keyword_density)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8);
+  if (kwEntries.length > 0) {
+    const maxDensity = kwEntries[0][1];
+    kwEntries.forEach(([word, densitySum]) => {
+      barRow(
+        kw,
+        word,
+        densitySum,
+        maxDensity,
+        `${((densitySum / total) * 100).toFixed(2)}%`,
+      );
+    });
+  } else {
+    kw.append("div").attr("class", "sc-kv").text("No keyword data");
+  }
+
+  const st = section("HTTP status");
+  const statusChips = st.append("div").attr("class", "sc-chips");
+  const bucketClass = {
+    "2xx": "sc-chip-good",
+    "3xx": "sc-chip-warn",
+    "4xx": "sc-chip-bad",
+    "5xx": "sc-chip-bad",
+    other: "",
+  };
+  const statusEntries = Object.entries(scorecard.status_codes).sort(
+    (a, b) => +a[0] - +b[0],
+  );
+  if (statusEntries.length > 0) {
+    statusEntries.forEach(([code, count]) => {
+      chip(
+        statusChips,
+        `${code} · ${count} page${count === 1 ? "" : "s"}`,
+        bucketClass[statusBucket(code)],
+      );
+    });
+  } else {
+    chip(statusChips, "No status data", "");
+  }
+
+  const struct = section("Structure");
+  const semChips = struct.append("div").attr("class", "sc-chips");
+  Object.entries(scorecard.semantic_elements).forEach(([tag, count]) => {
+    chip(semChips, `<${tag}> ${count}`, count > 0 ? "" : "sc-chip-zero");
+  });
+  kvRow(struct, "JSON-LD blocks", String(scorecard.jsonld_total_blocks));
+  kvRow(struct, "Hreflang pairs", String(scorecard.hreflang_pairs_total));
+  kvRow(
+    struct,
+    "Unique cookie names",
+    String(Array.from(scorecard.cookies_unique_names || []).length),
+  );
+  kvRow(struct, "Lazy images", String(scorecard.lazy_images_total));
+  kvRow(
+    struct,
+    "Preload / prefetch / preconnect",
+    `${scorecard.preloads.preload} / ${scorecard.preloads.prefetch} / ${scorecard.preloads.preconnect}`,
+  );
+  const ariaEntries = Object.entries(scorecard.aria_roles || {}).sort(
+    (a, b) => b[1] - a[1],
+  );
+  kvRow(
+    struct,
+    "ARIA roles",
+    ariaEntries.length > 0
+      ? ariaEntries
+          .slice(0, 3)
+          .map(([role, count]) => `${role} ${count}`)
+          .join(", ") +
+          (ariaEntries.length > 3 ? ` +${ariaEntries.length - 3} more` : "")
+      : "none",
+  );
 }
 
 d3.json("links.json")
@@ -1310,20 +1584,22 @@ d3.json("links.json")
     } else {
       console.warn("No data for scorecard in the d3.json call.");
       const list = d3.select("#scorecard-list").html("");
-      list.append("li").text("No scorecard data loaded.");
+      list.append("div").text("No scorecard data loaded.");
     }
   })
   .catch(function (error) {
     console.error("Error loading links.json for scorecard:", error);
     const list = d3.select("#scorecard-list").html("");
     list
-      .append("li")
+      .append("div")
       .html(
         `<strong>Error loading scorecard data:</strong> ${escapeHtml(
           error.message,
         )}`,
       );
   });
+
+showNodeEmptyState();
 
 document.addEventListener("DOMContentLoaded", () => {
   const analyzeButton = document.getElementById("analyze-node-button");
@@ -1359,7 +1635,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .then((data) => {
           if (data.analysis) {
-            analysisOutput.innerHTML = renderMarkdown(data.analysis);
+            analysisOutput.innerHTML = renderClaudeMarkdown(data.analysis);
           } else {
             analysisOutput.textContent = `Error: ${
               data.error || "Unexpected response format."
@@ -1376,68 +1652,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Claude analysis output element not found.");
   }
 });
-
-(function createHotkeyLegend() {
-  const modes = [
-    { key: "1", label: "Degree" },
-    { key: "2", label: "Words" },
-    { key: "3", label: "Response" },
-    { key: "4", label: "TTFB" },
-    { key: "5", label: "Hubs" },
-  ];
-
-  const legend = d3
-    .select("body")
-    .append("div")
-    .attr("id", "hotkey-legend")
-    .attr("class", "legend-box");
-
-  legend.append("h4").text("Graph Controls");
-
-  const list = legend.append("ul").attr("class", "legend-list");
-
-  modes.forEach((m) => {
-    list
-      .append("li")
-      .attr("data-mode", m.label.toLowerCase())
-      .html(`<span class="key-hint">${m.key}</span> ${m.label}`)
-      .on("click", function () {
-        sizeMode = this.getAttribute("data-mode");
-        node.attr("r", (d) => sizeModes[sizeMode](d));
-        simulation.alpha(0.2).restart();
-        updateActiveLegend();
-      });
-  });
-
-  list.append("li").html(`<span class="key-hint">Click</span> Route home`);
-  list.append("li").html(`<span class="key-hint">Esc</span> Clear highlight`);
-
-  function updateActiveLegend() {
-    list.selectAll("li").classed("active", function () {
-      return this.getAttribute("data-mode") === sizeMode;
-    });
-  }
-
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") clearHighlight?.();
-    if ("12345".includes(e.key)) {
-      const map = {
-        1: "degree",
-        2: "words",
-        3: "speed",
-        4: "ttfb",
-        5: "hubs",
-      };
-      const mode = map[e.key];
-      sizeMode = mode;
-      node.attr("r", (d) => sizeModes[sizeMode](d));
-      simulation.alpha(0.2).restart();
-      updateActiveLegend();
-    }
-  });
-
-  updateActiveLegend();
-})();
 
 function hasIssues(d) {
   return (
@@ -1582,7 +1796,9 @@ function renderMarkdown(md) {
   };
   const flushQuote = () => {
     if (quote.length) {
-      html.push(`<blockquote>${renderInlineMarkdown(quote.join(" "))}</blockquote>`);
+      html.push(
+        `<blockquote>${renderInlineMarkdown(quote.join(" "))}</blockquote>`,
+      );
       quote = [];
     }
   };
@@ -1593,7 +1809,9 @@ function renderMarkdown(md) {
 
     if (line.startsWith("```")) {
       if (inCodeBlock) {
-        html.push(`<pre><code>${escapeHtml(codeBuffer.join("\n"))}</code></pre>`);
+        html.push(
+          `<pre><code>${escapeHtml(codeBuffer.join("\n"))}</code></pre>`,
+        );
         codeBuffer = [];
         inCodeBlock = false;
       } else {
