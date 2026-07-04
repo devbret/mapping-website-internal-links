@@ -1,0 +1,369 @@
+:root {
+  --page-plane: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --gridline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+
+  --series-1: #2a78d6;
+  --series-2: #1baf7a;
+  --series-3: #eda100;
+  --series-4: #008300;
+  --series-5: #4a3aa7;
+  --series-6: #e34948;
+  --series-other: #898781;
+
+  --seq-100: #cde2fb;
+  --seq-250: #86b6ef;
+  --seq-400: #3987e5;
+  --seq-600: #184f95;
+  --seq-700: #0d366b;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+}
+
+#dashboard-view {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  overflow-y: auto;
+  background-color: var(--page-plane);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+body.dashboard-open #dashboard-view {
+  display: block;
+}
+
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 24px 8px;
+}
+
+.dash-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.dash-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.back-link {
+  display: inline-block;
+  padding: 7px 14px;
+  background-color: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--series-1);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.back-link:hover {
+  background-color: var(--series-1);
+  color: #fff;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 24px 48px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+
+#dashboard-view svg {
+  display: block;
+}
+
+#dumbbell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+#dumbbell svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.card-full {
+  grid-column: 1 / -1;
+}
+
+.card h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.chart-body {
+  position: relative;
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+.kpi-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.stat-tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.stat-tile .stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.stat-tile .stat-value {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.stat-tile .stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.donut-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.donut-tile svg {
+  flex: 0 0 auto;
+}
+
+.donut-legend {
+  flex: 1;
+  min-width: 0;
+}
+
+.donut-legend .stat-label,
+.donut-legend .stat-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.donut-tile {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 640px) {
+  .donut-tile {
+    grid-column: span 2;
+  }
+}
+
+.histogram-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.histogram-cell .hist-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.histogram-cell .hist-range {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-height: 16px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chart-legend-top {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.legend-line {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+#dashboard-view svg text {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+}
+
+.dash-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  padding: 8px 10px;
+  font-size: 12px;
+  max-width: 340px;
+}
+
+.dash-tooltip .tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.dash-tooltip .tip-row .tip-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dash-tooltip .tip-row .tip-label {
+  color: var(--text-secondary);
+}
+
+.dash-tooltip .tip-head {
+  font-weight: 600;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.page-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+}
+
+.page-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--baseline);
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.page-table th.sorted {
+  color: var(--text-primary);
+}
+
+.page-table td {
+  border-bottom: 1px solid var(--gridline);
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.page-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-table th.num {
+  text-align: right;
+}
+
+.page-table td.page-cell {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-table tr.filtered-out {
+  opacity: 0.35;
+}
+
+.section-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+@media (max-width: 980px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}

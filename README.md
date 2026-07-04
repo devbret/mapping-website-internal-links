@@ -1,6 +1,6 @@
 # Mapping A Website's Internal Links
 
-![Preview Of Resulting Visualization](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/9d320f08-dd19-4eb3-a89b-5bfd2873c2f0.png)
+![Preview Of Resulting Visualization](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/add032be-02bf-45ce-9ebb-f93ae35eace6.png)
 
 Crawl a website’s internal pages to extract SEO, accessibility, performance and link-structure data, then visualize the results as a D3 network graph with page scorecards and analysis from Claude.
 

@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Mapping A Website's Internal Links - Bret Bernhoft</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <link rel="stylesheet" href="main.css" />
+    <link rel="stylesheet" href="dashboard.css" />
     <link
       rel="icon"
       href="https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/ff4a3384-baa9-4bc2-94c9-6bff4e3d3ea0.png"
@@ -13,35 +16,105 @@
     />
   </head>
   <body>
-    <div id="scorecard" class="scorecard">
-      <h3>Website Scorecard</h3>
-      <ul id="scorecard-list"></ul>
-    </div>
+    <div id="graph-view">
+      <a id="dashboard-link" href="#dashboard">Analytics Dashboard →</a>
 
-    <div id="scorecard-right" class="scorecard">
-      <h3>Node Scorecard</h3>
-      <ul id="tooltip-scorecard-list"></ul>
-      <div id="claude-analysis-section">
-        <h3>Claude AI Analysis</h3>
-        <button id="analyze-node-button">Get Claude Analysis</button>
-        <div id="claude-analysis-output" style="margin-top: 0.5rem"></div>
+      <div id="scorecard" class="scorecard">
+        <h3>Website Scorecard</h3>
+        <div id="scorecard-list"></div>
+      </div>
+
+      <div id="scorecard-right" class="scorecard">
+        <h3>Node Scorecard</h3>
+        <div id="tooltip-scorecard-list"></div>
+        <div id="claude-analysis-section" class="sc-section">
+          <div class="sc-section-title">Claude AI Analysis</div>
+          <button id="analyze-node-button" type="button">
+            Get Claude Analysis
+          </button>
+          <div id="claude-analysis-output"></div>
+        </div>
+      </div>
+
+      <div id="filters-box" class="scorecard filters-box">
+        <h4>Website Search</h4>
+        <div class="search-group">
+          <input
+            id="node-search"
+            type="search"
+            placeholder="Type keywords — all must match…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="node-search-clear" type="button" title="Clear search">
+            x
+          </button>
+        </div>
+        <div class="legend-shortcuts">
+          <span><span class="key-hint">/</span> Focus search</span>
+          <span id="search-status"></span>
+        </div>
       </div>
     </div>
 
-    <div id="filters-box" class="scorecard filters-box">
-      <h4>Website Search</h4>
-      <div class="scorecard-search">
-        <input
-          id="node-search"
-          type="search"
-          placeholder="Filter nodes by keyword(s)…"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button id="node-search-clear" title="Clear search">x</button>
-      </div>
+    <div id="dashboard-view">
+      <header class="dash-header">
+        <div class="dash-header-left">
+          <a href="#" class="back-link">← Back to graph</a>
+          <h1>Site Analytics Dashboard</h1>
+        </div>
+      </header>
+
+      <main class="dash-grid">
+        <section id="kpi-row" class="kpi-row"></section>
+
+        <section class="card card-full">
+          <h2>Distributions</h2>
+          <div id="histograms" class="histogram-row"></div>
+        </section>
+
+        <section class="card">
+          <h2>Link structure by depth</h2>
+          <div id="radial-graph" class="chart-body"></div>
+          <div id="radial-legend" class="chart-legend"></div>
+        </section>
+
+        <section class="card">
+          <h2>Content by section</h2>
+          <div id="treemap" class="chart-body"></div>
+          <div id="treemap-legend" class="chart-legend"></div>
+        </section>
+
+        <section class="card">
+          <h2>Page speed</h2>
+          <div id="dumbbell-legend" class="chart-legend chart-legend-top"></div>
+          <div id="dumbbell" class="chart-body"></div>
+        </section>
+
+        <section class="card">
+          <h2>Audit checks by page</h2>
+          <div id="issue-matrix" class="chart-body scroll-x"></div>
+        </section>
+
+        <section class="card card-full">
+          <h2>All pages</h2>
+          <div id="page-table" class="table-wrap"></div>
+        </section>
+      </main>
+
+      <div id="dash-tooltip" class="dash-tooltip" hidden></div>
     </div>
 
     <script src="main.js"></script>
+    <script type="module" src="dashboard.js"></script>
+    <script type="module">
+      function syncView() {
+        const open = location.hash === "#dashboard";
+        document.body.classList.toggle("dashboard-open", open);
+        if (open) window.dispatchEvent(new Event("dashboard-show"));
+      }
+      window.addEventListener("hashchange", syncView);
+      syncView();
+    </script>
   </body>
 </html>
