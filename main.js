@@ -1615,7 +1615,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       analysisOutput.textContent = "Running analysis...";
 
-      fetch("http://localhost:5000/api/analyze", {
+      fetch("/api/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
