@@ -1,10 +1,14 @@
 import os
 import json
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
 from anthropic_api import analyze_with_anthropic
 
 DATA_FILE = 'links.json'
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+FRONTEND_FILES = {'index.html', 'main.js', 'main.css', 'dashboard.js', 'dashboard.css'}
 
 site_structure = {}
 _data_mtime = None
@@ -58,6 +62,18 @@ def analyze():
     except Exception as e:
         print(f"Error during analysis for {requested_url}: {e}")
         return jsonify({"error": f"An error occurred during analysis: {str(e)}"}), 500
+
+@app.route('/')
+def index():
+    return send_from_directory(BASE_DIR, 'index.html')
+
+@app.route('/<path:filename>')
+def frontend_file(filename):
+    if filename == DATA_FILE:
+        return send_from_directory(os.getcwd(), DATA_FILE)
+    if filename not in FRONTEND_FILES:
+        abort(404)
+    return send_from_directory(BASE_DIR, filename)
 
 @app.route('/api/urls')
 def list_urls():
