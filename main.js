@@ -133,9 +133,11 @@ d3.json("links.json")
 
     const container = svg.append("g");
 
-    const zoomHandler = d3
-      .zoom()
-      .on("zoom", (event) => container.attr("transform", event.transform));
+    let zoomScale = 1;
+    const zoomHandler = d3.zoom().on("zoom", (event) => {
+      container.attr("transform", event.transform);
+      zoomScale = event.transform.k;
+    });
     svg.call(zoomHandler).call(zoomHandler.transform, d3.zoomIdentity);
 
     const defs = svg.append("defs");
@@ -404,22 +406,67 @@ d3.json("links.json")
       )
       .alphaDecay(0.03);
 
-    simulation.on("tick", () => {
-      link.attr("d", (d) => {
-        const sx = d.source.x,
-          sy = d.source.y,
-          tx = d.target.x,
-          ty = d.target.y;
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const dr = Math.hypot(dx, dy) * 0.6;
-        return `M${sx},${sy}A${dr},${dr} 0 0,1 ${tx},${ty}`;
+    const RENDER_EPSILON_PX = 0.2;
+    let isSimulating = false;
+
+    function linkPath(d) {
+      const sx = d.source.x,
+        sy = d.source.y,
+        tx = d.target.x,
+        ty = d.target.y;
+      const dx = tx - sx;
+      const dy = ty - sy;
+      const dr = Math.sqrt(dx * dx + dy * dy) * 0.6;
+      return `M${sx},${sy}A${dr},${dr} 0 0,1 ${tx},${ty}`;
+    }
+
+    function render(full) {
+      const eps = full ? -1 : RENDER_EPSILON_PX / zoomScale;
+      let anyMoved = false;
+
+      node.each(function (d) {
+        const moved =
+          d._rx === undefined ||
+          Math.abs(d.x - d._rx) >= eps ||
+          Math.abs(d.y - d._ry) >= eps;
+        d._moved = moved;
+        if (!moved) return;
+        anyMoved = true;
+        d._rx = d.x;
+        d._ry = d.y;
+        this.setAttribute("cx", d.x);
+        this.setAttribute("cy", d.y);
       });
 
-      node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
-      labels.attr("x", (d) => d.x + 10).attr("y", (d) => d.y + 4);
+      if (!anyMoved) return;
+
+      link.each(function (l) {
+        if (l.source._moved || l.target._moved) {
+          this.setAttribute("d", linkPath(l));
+        }
+      });
+
+      labels.each(function (d) {
+        if (this.getAttribute("display") === "none") return;
+        this.setAttribute("x", d.x + 10);
+        this.setAttribute("y", d.y + 4);
+      });
 
       drawHulls();
+    }
+
+    simulation.on("tick", () => {
+      if (!isSimulating) {
+        isSimulating = true;
+        svg.classed("graph-at-rest", false);
+      }
+      render(false);
+    });
+
+    simulation.on("end", () => {
+      render(true);
+      isSimulating = false;
+      svg.classed("graph-at-rest", true);
     });
 
     const searchInput = document.getElementById("node-search");
@@ -527,6 +574,8 @@ d3.json("links.json")
     });
 
     function mouseover(event, d) {
+      if (isDragging) return;
+
       d3.select(this).raise();
 
       const claudeDiv = document.querySelector("#claude-analysis-section");
@@ -547,7 +596,11 @@ d3.json("links.json")
       renderNodeScorecard(d, connectedLinks);
 
       d3.select(this).style("cursor", "pointer");
-      labels.filter((l) => l === d).attr("display", null);
+      labels
+        .filter((l) => l === d)
+        .attr("display", null)
+        .attr("x", d.x + 10)
+        .attr("y", d.y + 4);
 
       node.classed("dimmed", true);
       link.classed("dimmed", true);
@@ -585,29 +638,21 @@ d3.json("links.json")
     }
 
     function mouseout(event, d) {
+      if (isDragging) return;
+
       d3.select(this).style("cursor", "auto");
       labels.filter((l) => l === d).attr("display", "none");
 
-      node
-        .filter((n) => n !== currentlySelectedNode)
-        .classed("dimmed", false)
-        .classed("highlight", false);
-      link
-        .filter(
-          (l) =>
-            (l.source.id || l.source) !== currentlySelectedNode?.id &&
-            (l.target.id || l.target) !== currentlySelectedNode?.id,
-        )
-        .classed("dimmed", false)
-        .classed("highlight", false);
+      clearHighlight();
 
       node.filter((n) => isGreen(n)).style("opacity", null);
-
-      restoreAllArrowheads();
     }
+
+    let isDragging = false;
 
     function dragstarted(event, d) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
+      isDragging = true;
       d.fx = d.x;
       d.fy = d.y;
     }
@@ -619,8 +664,16 @@ d3.json("links.json")
 
     function dragended(event, d) {
       if (!event.active) simulation.alphaTarget(0);
+      isDragging = false;
       d.fx = null;
       d.fy = null;
+
+      const src = event.sourceEvent;
+      const under =
+        src && Number.isFinite(src.clientX)
+          ? document.elementFromPoint(src.clientX, src.clientY)
+          : null;
+      if (under !== this) mouseout.call(this, event, d);
     }
 
     function neighborsOf(id) {

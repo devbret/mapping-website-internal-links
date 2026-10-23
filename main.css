@@ -34,9 +34,6 @@ h4 {
   stroke: #888;
   stroke-opacity: 0.75;
   stroke-width: 2px;
-  transition:
-    stroke 0.2s,
-    stroke-opacity 0.2s;
 }
 
 .node {
@@ -58,6 +55,15 @@ h4 {
 
 .dimmed {
   opacity: 0.2;
+}
+
+.graph-at-rest .link {
+  transition:
+    stroke 0.2s,
+    stroke-opacity 0.2s;
+}
+
+.graph-at-rest .dimmed {
   transition: opacity 0.2s ease-in-out;
 }
 
